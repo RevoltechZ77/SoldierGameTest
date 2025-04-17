@@ -2092,6 +2092,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 589684863}
     m_Modifications:
+    - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
+      propertyPath: m_Color.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
+      propertyPath: m_Color.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
+      propertyPath: m_Color.r
+      value: 0.9433962
+      objectReference: {fileID: 0}
     - target: {fileID: 2271228718102077484, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
       propertyPath: m_Name
       value: BalasSprite
