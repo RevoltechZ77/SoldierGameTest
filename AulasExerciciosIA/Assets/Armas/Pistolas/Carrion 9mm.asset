@@ -10,23 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1308526ba50e4cc40be55a99501e57e1, type: 3}
-  m_Name: PistolaConfig
+  m_Name: Carrion 9mm
   m_EditorClassIdentifier: 
+  nomeArma: 
   tamanhoCarregador: 12
-  tempoRecarga: 1
-  projetilPrefab: {fileID: 6548790603318704671, guid: f2de74d85d1c04940b7497bace9cdad2, type: 3}
-  rotacaoSpriteProjetil: -90
-  velocidadeProjetil: 5
-  alcance: 10
   tempoEntreTiros: 0.1
-  projeteisPorTiro: 1
-  angulo: 0
-  offsetArma: {x: 0.4, y: 0, z: 0}
-  offsetPontaArma: {x: 0.2, y: 0.1, z: 0}
-  coice: 0
-  forcaCoice: 1
+  tempoRecarga: 1
+  tempoAtrasoRecargaZerada: 0
   forcaRecuo: 3
   forcaRecuoBraco: 1
+  forcaCoice: 1
+  coice: 0
+  angulo: 0
+  projeteisPorTiro: 1
+  velocidadeProjetil: 5
+  alcance: 10
+  rotacaoSpriteProjetil: -90
+  offsetArma: {x: 0.4, y: 0, z: 0}
+  offsetPontaArma: {x: 0.2, y: 0.1, z: 0}
+  projetilPrefab: {fileID: 6548790603318704671, guid: f2de74d85d1c04940b7497bace9cdad2, type: 3}
   somDisparo: {fileID: 8300000, guid: cb49002299a0ef6499137ac55e623f97, type: 3}
   somRecarga: {fileID: 8300000, guid: 6204d5c07b3d53c4bb01a1bcf1324d5d, type: 3}
-  recargaManual: 0
+  spriteArma: {fileID: -4218447859694749590, guid: 16a7be522db321a4283d19362d1067ad, type: 3}

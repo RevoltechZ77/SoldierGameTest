@@ -1,25 +1,27 @@
 ﻿using UnityEngine;
 
-[CreateAssetMenu(fileName = "NovaArma", menuName = "ArmaConfig")]
+// ScriptableObject que define as configurações de uma arma
+[CreateAssetMenu(fileName = "NovaArma", menuName = "Armas/Nova Arma", order = 1)]
 public class ArmaConfig : ScriptableObject
 {
-    public int tamanhoCarregador = 10; // Capacidade do carregador
-    public float tempoRecarga = 2f; // Tempo (em segundos) pra recarregar a arma
+    public string nomeArma; // Nome da arma (ex.: "Carrion 9mm", "ESP Cano Curto")
+    public int tamanhoCarregador; // Quantidade máxima de balas no carregador
+    public float tempoEntreTiros; // Intervalo entre disparos (cadência)
+    public float tempoRecarga; // Tempo necessário pra recarregar a arma
+    public float tempoAtrasoRecargaZerada; // Tempo de atraso quando a recarga é iniciada com o carregador zerado
+    public float forcaRecuo; // Força do recuo visual da arma
+    public float forcaRecuoBraco; // Multiplicador do recuo pro braço
+    public float forcaCoice; // Força do coice aplicado ao jogador
+    public bool coice; // Se a arma aplica coice ao jogador
+    public float angulo; // Ângulo de dispersão dos projéteis (ex.: pra espingarda)
+    public int projeteisPorTiro; // Quantidade de projéteis por disparo (ex.: 3 pra espingarda)
+    public float velocidadeProjetil; // Velocidade do projétil
+    public float alcance; // Distância máxima que o projétil percorre
+    public float rotacaoSpriteProjetil; // Rotação adicional do sprite do projétil
+    public Vector3 offsetArma; // Posição relativa da arma em relação ao braço
+    public Vector3 offsetPontaArma; // Posição da ponta da arma (onde o projétil é instanciado)
     public GameObject projetilPrefab; // Prefab do projétil
-    public float rotacaoSpriteProjetil = 0f; // Ajuste de rotação do sprite do projétil (em graus)
-    public float velocidadeProjetil = 10f; // Velocidade fixa do projétil
-    public float alcance = 10f; // Distância máxima do projétil
-    public float tempoEntreTiros = 0.5f; // Cadência de tiro
-    public int projeteisPorTiro = 1; // Número de projéteis por tiro (1 pra pistola, 3 pra espingarda)
-    public float angulo = 5f; // Ângulo de espalhamento (ex.: -5°, 0°, +5° pra espingarda)
-    public Vector3 offsetArma = new Vector3(0.5f, 0f, 0f); // Offset da arma em relação ao Braco
-    public Vector3 offsetPontaArma = new Vector3(0.6f, 0.2f, 0f); // Offset da ponta da arma pra spawn do projétil
-    public bool coice = false; // Se a arma aplica coice no Soldado Player
-    public float forcaCoice = 0f; // Força do coice aplicado ao Soldado Player
-    public float forcaRecuo = 0f; // Força do recuo visual da arma
-    [Range(0f, 10f)] // Permite valores de 0 a 10 (0% a 1000%)
-    public float forcaRecuoBraco = 0.5f; // Multiplicador do recuo da arma aplicado ao Braco
-    public AudioClip somDisparo; // Som de disparo da arma
-    public AudioClip somRecarga; // Som de recarga da arma
-    public bool recargaManual = false; // Se a recarga é manual (um som por bala) ou automática (um som só)
+    public AudioClip somDisparo; // Som do disparo
+    public AudioClip somRecarga; // Som da recarga
+    public Sprite spriteArma; // Sprite visual da arma
 }

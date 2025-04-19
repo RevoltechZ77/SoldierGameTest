@@ -1284,11 +1284,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d61a0457ea803cc47acdf65d3fc113c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  armas:
+  armasConfig:
   - {fileID: 11400000, guid: 3a275bdae8fc26c45b7b5c6c0d2a4859, type: 2}
   - {fileID: 11400000, guid: 9fda3bc8aaa9bca4da7309f932240a50, type: 2}
-  spritePistola: {fileID: -4218447859694749590, guid: 16a7be522db321a4283d19362d1067ad, type: 3}
-  spriteEspingarda: {fileID: -8774725001865043376, guid: 7a95166878d58fe40b03f0efdb66b76c, type: 3}
 --- !u!212 &1163107386
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -1357,7 +1355,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.318
+  m_Volume: 0.137
   m_Pitch: 1
   Loop: 0
   Mute: 0

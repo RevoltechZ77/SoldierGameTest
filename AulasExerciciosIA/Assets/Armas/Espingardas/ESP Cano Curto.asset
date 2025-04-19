@@ -10,23 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1308526ba50e4cc40be55a99501e57e1, type: 3}
-  m_Name: Espingarda
+  m_Name: ESP Cano Curto
   m_EditorClassIdentifier: 
-  projetilPrefab: {fileID: 6548790603318704671, guid: f2de74d85d1c04940b7497bace9cdad2, type: 3}
-  velocidadeProjetil: 8
-  alcance: 4
+  nomeArma: 
+  tamanhoCarregador: 8
+  tempoEntreTiros: 0.5
+  tempoRecarga: 3
+  tempoAtrasoRecargaZerada: 0
   forcaRecuo: 6
   forcaRecuoBraco: 0.55
-  tempoEntreTiros: 0.5
-  projeteisPorTiro: 5
+  forcaCoice: 8
+  coice: 1
   angulo: 10
+  projeteisPorTiro: 5
+  velocidadeProjetil: 8
+  alcance: 4
   rotacaoSpriteProjetil: -90
   offsetArma: {x: 0.45, y: 0, z: 0}
   offsetPontaArma: {x: 0.45, y: 0.05, z: 0}
-  tamanhoCarregador: 8
-  tempoRecarga: 3
+  projetilPrefab: {fileID: 6548790603318704671, guid: f2de74d85d1c04940b7497bace9cdad2, type: 3}
   somDisparo: {fileID: 8300000, guid: 8b0a9c760c189f940bf9659379cdd8ae, type: 3}
   somRecarga: {fileID: 8300000, guid: c87c863e0b6662f41a9bf198dc6ac070, type: 3}
-  coice: 1
-  forcaCoice: 8
-  recargaManual: 1
+  spriteArma: {fileID: -8774725001865043376, guid: 7a95166878d58fe40b03f0efdb66b76c, type: 3}

@@ -1,34 +1,29 @@
 using UnityEngine;
 
+// Script que gerencia as armas do jogador, delegando a lógica pra classe específica de cada arma
 public class ControlarArma : MonoBehaviour
 {
-    public ArmaConfig[] armas; // Lista com as duas armas (pistola e espingarda)
-    private string[] nomesArmas = { "Pistola", "Espingarda" }; // Nomes das armas
-    private int armaAtual = 0; // Índice da arma atual (0: pistola, 1: espingarda)
+    public ArmaConfig[] armasConfig; // Array de ScriptableObjects (Carrion 9mm, ESP Cano Curto)
+    private ArmaBase[] armas; // Array de instâncias das armas (Pistola, Espingarda)
+    private int armaAtual = 0; // Índice da arma atual (0: Carrion 9mm, 1: ESP Cano Curto)
     private float tempoUltimoTiro; // Tempo do último tiro pra controlar cadência
-    private int[] municaoPorArma; // Array pra armazenar a munição de cada arma
-    private int[] balasTotaisPorArma; // Array pra balas totais de cada arma
-    private bool estaRecarregando; // Indica se a arma tá recarregando
-    private float tempoInicioRecarga; // Tempo em que a recarga começou
-    private int balasRecarregadas; // Quantidade de balas já recarregadas (pra recarga manual)
-    private float tempoUltimoSomRecarga; // Tempo do último som de recarga (pra recarga manual)
-    private int balasNecessarias; // Quantidade total de balas a recarregar
-    private Rigidbody2D soldadoRb; // Referência ao Rigidbody2D do Soldado Player pra coice
-    private bool estaRecuando; // Controla se a arma tá recuando visualmente
+    private bool estaRecuando; // Controla se a arma está recuando visualmente
     private float tempoRecuo; // Tempo atual do recuo visual
-    private float duracaoRecuo = 0.2f; // Duração do recuo visual
+    private float duracaoRecuo = 0.2f; // Duração do recuo visual (em segundos)
     private Vector3 deslocamentoRecuo; // Deslocamento do recuo visual
-    private MoverQuadrado moverSoldado; // Referência ao script MoverQuadrado pra direcaoFlip
-    public Sprite spritePistola; // Sprite da pistola
-    public Sprite spriteEspingarda; // Sprite da espingarda
-    private SpriteRenderer spriteRenderer; // Componente pra trocar e flipar sprites
-    private ControlarBraco controlarBraco; // Referência ao script ControlarBraco
-    private ControlarHUD controlarHUD; // Referência ao script ControlarHUD
-    private AudioSource audioSource; // Componente pra tocar os sons de disparo
+    private Rigidbody2D soldadoRb; // Referência ao Rigidbody2D do jogador
+    private MoverQuadrado moverSoldado; // Referência ao script de movimento do jogador
+    private SpriteRenderer spriteRenderer; // Componente pra trocar e flipar sprites da arma
+    private ControlarBraco controlarBraco; // Referência ao script do braço
+    private ControlarHUD controlarHUD; // Referência ao script do HUD
+    private AudioSource audioSource; // Componente pra tocar sons
+    private bool estaAtrasandoRecarga; // Indica se a arma atual está em um estado de atraso
+    private float tempoInicioAtraso; // Momento em que o atraso começou
 
     void Start()
     {
-        // Pega o Rigidbody2D do Soldado Player (pai na hierarquia)
+        // --- Inicializa as referências externas ---
+        // Pega o Rigidbody2D do jogador (pai na hierarquia)
         soldadoRb = GetComponentInParent<Rigidbody2D>();
         if (soldadoRb == null)
         {
@@ -36,7 +31,8 @@ public class ControlarArma : MonoBehaviour
             enabled = false; // Desativa o script se não encontrar
             return;
         }
-        // Pega o script MoverQuadrado do Soldado Player
+
+        // Pega o script MoverQuadrado do jogador
         moverSoldado = GetComponentInParent<MoverQuadrado>();
         if (moverSoldado == null)
         {
@@ -44,7 +40,8 @@ public class ControlarArma : MonoBehaviour
             enabled = false;
             return;
         }
-        // Pega o SpriteRenderer da Arma
+
+        // Pega o SpriteRenderer da arma
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer == null)
         {
@@ -52,77 +49,118 @@ public class ControlarArma : MonoBehaviour
             enabled = false;
             return;
         }
-        // Pega o script ControlarBraco do Braco (pai da Arma)
+
+        // Pega o script ControlarBraco do braço (pai da arma)
         controlarBraco = GetComponentInParent<ControlarBraco>();
         if (controlarBraco == null)
         {
             Debug.LogError("ControlarBraco não encontrado no Braco!");
         }
-        // Pega o script ControlarHUD (pode estar em qualquer objeto, ex.: HUDCanvas)
+
+        // Pega o script ControlarHUD (geralmente no HUDCanvas)
         controlarHUD = FindFirstObjectByType<ControlarHUD>();
         if (controlarHUD == null)
         {
             Debug.LogError("ControlarHUD não encontrado na cena!");
         }
-        // Pega o componente AudioSource da Arma
-        audioSource = GetComponent<AudioSource>();
+
+        // Pega o componente AudioSource da arma
+        audioSource = GetComponent<SpriteRenderer>().GetComponent<AudioSource>();
         if (audioSource == null)
         {
             Debug.LogError("AudioSource não encontrado no Arma! Adicionando um...");
             audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false; // Garante que não toca automaticamente
         }
-        // Verifica se há armas configuradas
-        if (armas == null || armas.Length == 0)
+
+        // --- Inicializa as armas ---
+        // Verifica se há armas configuradas no array armasConfig
+        if (armasConfig == null || armasConfig.Length == 0)
         {
             Debug.LogError("Nenhuma arma configurada!");
             enabled = false;
             return;
         }
-        // Inicializa os arrays de munição e balas totais pra cada arma
-        municaoPorArma = new int[armas.Length];
-        balasTotaisPorArma = new int[armas.Length];
-        for (int i = 0; i < armas.Length; i++)
+
+        // Cria o array de instâncias das armas
+        armas = new ArmaBase[armasConfig.Length];
+        for (int i = 0; i < armasConfig.Length; i++)
         {
-            municaoPorArma[i] = armas[i].tamanhoCarregador; // Inicia com o carregador cheio
-            balasTotaisPorArma[i] = 300; // Inicia com 300 balas por arma
+            // Cria um GameObject vazio pra cada arma (pra anexar os scripts Pistola ou Espingarda)
+            GameObject armaObj = new GameObject($"Arma_{i}");
+            armaObj.transform.SetParent(transform); // Faz o GameObject ser filho do objeto Arma
+            ArmaBase arma;
+
+            // Cria a instância da arma com base no índice (0: Pistola, 1: Espingarda)
+            if (i == 0) // Carrion 9mm (Pistola)
+            {
+                arma = armaObj.AddComponent<Pistola>(); // Adiciona o script Pistola
+                arma.nomeArma = "Carrion 9mm"; // Define o nome
+            }
+            else // ESP Cano Curto (Espingarda)
+            {
+                arma = armaObj.AddComponent<Espingarda>(); // Adiciona o script Espingarda
+                arma.nomeArma = "ESP Cano Curto"; // Define o nome
+            }
+
+            // --- Copia os dados do ScriptableObject (ArmaConfig) pra instância da arma ---
+            arma.tamanhoCarregador = armasConfig[i].tamanhoCarregador;
+            arma.tempoEntreTiros = armasConfig[i].tempoEntreTiros;
+            arma.tempoRecarga = armasConfig[i].tempoRecarga;
+            arma.tempoAtrasoRecargaZerada = armasConfig[i].tempoAtrasoRecargaZerada;
+            arma.forcaRecuo = armasConfig[i].forcaRecuo;
+            arma.forcaRecuoBraco = armasConfig[i].forcaRecuoBraco;
+            arma.forcaCoice = armasConfig[i].forcaCoice;
+            arma.coice = armasConfig[i].coice;
+            arma.angulo = armasConfig[i].angulo;
+            arma.projeteisPorTiro = armasConfig[i].projeteisPorTiro;
+            arma.velocidadeProjetil = armasConfig[i].velocidadeProjetil;
+            arma.alcance = armasConfig[i].alcance;
+            arma.rotacaoSpriteProjetil = armasConfig[i].rotacaoSpriteProjetil;
+            arma.offsetArma = armasConfig[i].offsetArma;
+            arma.offsetPontaArma = armasConfig[i].offsetPontaArma;
+            arma.projetilPrefab = armasConfig[i].projetilPrefab;
+            arma.somDisparo = armasConfig[i].somDisparo;
+            arma.somRecarga = armasConfig[i].somRecarga;
+            arma.spriteArma = armasConfig[i].spriteArma; // Usa o campo spriteArma do ScriptableObject
+
+            // Inicializa a arma com as referências externas
+            arma.Inicializar(controlarHUD, audioSource, controlarBraco, soldadoRb, moverSoldado);
+            armas[i] = arma; // Adiciona a arma ao array
         }
-        // Inicia com a pistola
-        TrocarArma(0);
+
+        TrocarArma(0); // Começa com a Carrion 9mm
     }
 
     void Update()
     {
-        // Verifica se o script tá ativado e todas as referências necessárias existem
+        // Verifica se o script está ativado e todas as referências estão inicializadas
         if (!enabled || moverSoldado == null || spriteRenderer == null || armas == null || armas.Length == 0)
         {
             Debug.LogWarning("Script desativado ou referências não inicializadas!");
             return;
         }
 
-        // Troca de arma
-        if (Input.GetKeyDown(KeyCode.Alpha1) && armaAtual != 0 && armas.Length > 0)
+        // --- Troca de arma ---
+        if (Input.GetKeyDown(KeyCode.Alpha1) && armaAtual != 0) // Tecla 1: Carrion 9mm
         {
             TrocarArma(0);
         }
-        else if (Input.GetKeyDown(KeyCode.Alpha2) && armaAtual != 1 && armas.Length > 1)
+        else if (Input.GetKeyDown(KeyCode.Alpha2) && armaAtual != 1) // Tecla 2: ESP Cano Curto
         {
             TrocarArma(1);
         }
 
-        // Pega a direção de flip do Soldado Player (1: direita, -1: esquerda)
-        float direcaoFlip = moverSoldado.GetDirecaoFlip();
-        // Flipa o sprite da arma se olhando pra esquerda
-        spriteRenderer.flipX = (direcaoFlip < 0);
+        // --- Atualiza o sprite e a posição da arma ---
+        float direcaoFlip = moverSoldado.GetDirecaoFlip(); // Pega a direção do jogador (1: direita, -1: esquerda)
+        spriteRenderer.sprite = armas[armaAtual].spriteArma; // Define o sprite da arma atual
+        spriteRenderer.flipX = (direcaoFlip < 0); // Flipa o sprite se o jogador tá olhando pra esquerda
 
-        // Ajusta a posição da arma com base no offset, invertendo X se flipado
-        Vector3 offsetArmaAjustado = armas[armaAtual].offsetArma;
-        offsetArmaAjustado.x *= direcaoFlip;
-        transform.localPosition = offsetArmaAjustado;
+        Vector3 offsetArmaAjustado = armas[armaAtual].offsetArma; // Pega o offset da arma atual
+        offsetArmaAjustado.x *= direcaoFlip; // Ajusta o offset com base na direção
+        transform.localPosition = offsetArmaAjustado; // Define a posição da arma
 
-        // A rotação da Arma é herdada do Braco, então não precisamos rotacionar aqui
-
-        // Controla o recuo visual da arma
+        // --- Controla o recuo visual da arma ---
         if (estaRecuando)
         {
             tempoRecuo += Time.deltaTime; // Incrementa o tempo do recuo
@@ -139,304 +177,96 @@ public class ControlarArma : MonoBehaviour
             }
         }
 
-        // Controla o processo de recarga
-        if (estaRecarregando)
+        // --- Verifica recarga manual com a tecla "R" ---
+        // Se pressionar "R", a recarga começa imediatamente, ignorando qualquer atraso
+        if (Input.GetKeyDown(KeyCode.R) && armas[armaAtual].municaoAtual < armas[armaAtual].tamanhoCarregador && armas[armaAtual].balasTotais > 0)
         {
-            float tempoDecorrido = Time.time - tempoInicioRecarga;
+            estaAtrasandoRecarga = false; // Cancela qualquer atraso em andamento
+            armas[armaAtual].Recarregar(); // Inicia a recarga manual
+        }
 
-            // Recarga manual: Toca um som por bala recarregada, com intervalo baseado em tempoRecarga
-            if (armas[armaAtual].recargaManual)
+        // --- Gerencia o atraso da recarga automática ---
+        if (estaAtrasandoRecarga)
+        {
+            float tempoDecorridoAtraso = Time.time - tempoInicioAtraso;
+            float tempoAtraso = armas[armaAtual].GetTipoArma() == 1 ? armas[armaAtual].tempoAtrasoRecargaZerada : 0f; // Atraso só pra espingarda
+            if (tempoDecorridoAtraso >= tempoAtraso)
             {
-                // Calcula o intervalo entre os sons: tempoRecarga dividido pelo número de balas
-                float intervaloSom = balasNecessarias > 0 ? armas[armaAtual].tempoRecarga / balasNecessarias : armas[armaAtual].tempoRecarga;
-
-                // Termina a recarga quando o tempo total for atingido
-                if (tempoDecorrido >= armas[armaAtual].tempoRecarga)
-                {
-                    // Calcula quantas balas ainda faltam recarregar
-                    int balasFaltando = balasNecessarias - balasRecarregadas;
-                    if (balasFaltando > 0)
-                    {
-                        // Toca o som de recarga pra última bala (se ainda não tocou)
-                        if (audioSource != null && armas[armaAtual].somRecarga != null)
-                        {
-                            audioSource.PlayOneShot(armas[armaAtual].somRecarga);
-                            Debug.Log($"Tocando som de recarga (bala {balasRecarregadas + 1}/{balasNecessarias}): {armas[armaAtual].somRecarga.name}");
-                        }
-                        else
-                        {
-                            Debug.LogWarning("AudioSource ou somRecarga não configurado!");
-                        }
-                        // Recarrega todas as balas restantes de uma vez
-                        municaoPorArma[armaAtual] += balasFaltando;
-                        balasTotaisPorArma[armaAtual] -= balasFaltando;
-                        balasRecarregadas = balasNecessarias; // Marca todas as balas como recarregadas
-                        // Atualiza a HUD
-                        if (controlarHUD != null)
-                        {
-                            Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
-                        }
-                    }
-                    // Termina a recarga
-                    estaRecarregando = false;
-                    balasRecarregadas = 0; // Reseta o contador
-                    Debug.Log($"Recarga manual concluída! Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
-                }
-                // Toca o som de recarga pra cada bala, com intervalo, mas só se ainda não terminou
-                else if (balasRecarregadas < balasNecessarias && Time.time >= tempoUltimoSomRecarga + intervaloSom)
-                {
-                    if (audioSource != null && armas[armaAtual].somRecarga != null)
-                    {
-                        audioSource.PlayOneShot(armas[armaAtual].somRecarga);
-                        Debug.Log($"Tocando som de recarga (bala {balasRecarregadas + 1}/{balasNecessarias}): {armas[armaAtual].somRecarga.name}");
-                    }
-                    else
-                    {
-                        Debug.LogWarning("AudioSource ou somRecarga não configurado!");
-                    }
-                    balasRecarregadas++;
-                    tempoUltimoSomRecarga = Time.time;
-                    // Incrementa a munição uma bala por vez
-                    municaoPorArma[armaAtual]++;
-                    balasTotaisPorArma[armaAtual]--;
-                    // Atualiza a HUD
-                    if (controlarHUD != null)
-                    {
-                        Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
-                    }
-                }
+                estaAtrasandoRecarga = false; // Termina o atraso
+                Debug.Log($"Atraso de recarga terminado! Iniciando recarga da {armas[armaAtual].nomeArma}.");
+                armas[armaAtual].Recarregar(); // Inicia a recarga
             }
-            // Recarga automática: Toca o som uma vez e recarrega tudo no final
             else
             {
-                if (tempoDecorrido >= armas[armaAtual].tempoRecarga)
-                {
-                    // Calcula quantas balas são necessárias pra encher o carregador
-                    balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
-                    if (balasTotaisPorArma[armaAtual] >= balasNecessarias)
-                    {
-                        // Termina a recarga
-                        municaoPorArma[armaAtual] = armas[armaAtual].tamanhoCarregador;
-                        balasTotaisPorArma[armaAtual] -= balasNecessarias;
-                        Debug.Log($"Recarga automática concluída! Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
-                    }
-                    else if (balasTotaisPorArma[armaAtual] > 0)
-                    {
-                        // Recarga parcial
-                        municaoPorArma[armaAtual] += balasTotaisPorArma[armaAtual];
-                        balasTotaisPorArma[armaAtual] = 0;
-                        Debug.Log($"Recarga parcial! Munição atual: {municaoPorArma[armaAtual]}, Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
-                    }
-                    else
-                    {
-                        Debug.Log($"Sem balas totais pra recarregar a {nomesArmas[armaAtual]}!");
-                    }
-                    // Toca o som de recarga (apenas pra recarga automática)
-                    if (audioSource != null && armas[armaAtual].somRecarga != null)
-                    {
-                        audioSource.PlayOneShot(armas[armaAtual].somRecarga);
-                        Debug.Log($"Tocando som de recarga: {armas[armaAtual].somRecarga.name}");
-                    }
-                    else
-                    {
-                        Debug.LogWarning("AudioSource ou somRecarga não configurado!");
-                    }
-                    estaRecarregando = false;
-                    // Atualiza a HUD
-                    if (controlarHUD != null)
-                    {
-                        Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
-                    }
-                }
+                Debug.Log($"Aguardando atraso de recarga da {armas[armaAtual].nomeArma}... Tempo restante: {(tempoAtraso - tempoDecorridoAtraso):F2} segundos.");
+                return; // Não prossegue até o atraso terminar
             }
-            return; // Não permite atirar enquanto recarrega
         }
 
-        // Verifica cada condição separadamente
-        bool mousePressedDown = Input.GetMouseButtonDown(0); // Clique inicial
-        bool mousePressedHold = Input.GetMouseButton(0); // Clique segurado
-        bool mousePressed = mousePressedDown || mousePressedHold; // Combina as duas condições
-        bool tempoOk = Time.time >= tempoUltimoTiro + armas[armaAtual].tempoEntreTiros;
-        bool temMunicao = municaoPorArma[armaAtual] > 0;
-        bool temBalasTotais = balasTotaisPorArma[armaAtual] > 0 || municaoPorArma[armaAtual] > 0;
-
-        // Log detalhado pra cada condição
-        Debug.Log($"Condições de disparo: MousePressedDown={mousePressedDown}, MousePressedHold={mousePressedHold}, MousePressed={mousePressed}, TempoOk={tempoOk} (TempoAtual={Time.time}, UltimoTiro={tempoUltimoTiro}, Cadencia={armas[armaAtual].tempoEntreTiros}), TemMunicao={temMunicao} (MunicaoAtual={municaoPorArma[armaAtual]}), TemBalasTotais={temBalasTotais} (BalasTotais={balasTotaisPorArma[armaAtual]})");
-
-        // Atira se todas as condições forem atendidas
-        if (mousePressed && tempoOk && temMunicao)
+        // --- Executa a recarga da arma atual ---
+        if (armas[armaAtual].estaRecarregando)
         {
-            Debug.Log("Condições pra atirar atendidas! Chamando Atirar...");
-            Atirar();
+            armas[armaAtual].Recarregar(); // Chama o método de recarga da arma atual (Pistola ou Espingarda)
+        }
+
+        // --- Verifica se a arma precisa recarregar automaticamente ---
+        if (armas[armaAtual].municaoAtual <= 0 && armas[armaAtual].balasTotais > 0 && !armas[armaAtual].estaRecarregando && !estaAtrasandoRecarga)
+        {
+            // Se a arma é uma espingarda e o carregador está zerado, inicia o atraso
+            if (armas[armaAtual].GetTipoArma() == 1 && armas[armaAtual].municaoAtual == 0 && armas[armaAtual].tempoAtrasoRecargaZerada > 0)
+            {
+                estaAtrasandoRecarga = true;
+                tempoInicioAtraso = Time.time;
+                Debug.Log($"Iniciando recarga com carregador zerado! Atrasando recarga da {armas[armaAtual].nomeArma} por {armas[armaAtual].tempoAtrasoRecargaZerada:F2} segundos.");
+            }
+            else
+            {
+                armas[armaAtual].Recarregar(); // Inicia a recarga automática sem atraso
+            }
+        }
+
+        // --- Verifica se pode atirar ---
+        bool mousePressed = Input.GetMouseButtonDown(0) || Input.GetMouseButton(0); // Clique ou clique segurado
+        if (mousePressed && armas[armaAtual].PodeAtirar(Time.time, tempoUltimoTiro))
+        {
+            // Converte a posição do cursor pra coordenadas do mundo
+            Vector3 mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
+            // Chama o método de disparo da arma atual
+            armas[armaAtual].Atirar(transform.position, transform.parent.rotation, direcaoFlip, mousePos);
+
             tempoUltimoTiro = Time.time; // Atualiza o tempo do último tiro
-            municaoPorArma[armaAtual]--; // Reduz a munição do carregador da arma atual
-            Debug.Log($"Munição restante: {municaoPorArma[armaAtual]}, Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
-            // Atualiza a HUD
-            if (controlarHUD != null)
-            {
-                Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
-            }
-            if (municaoPorArma[armaAtual] <= 0)
-            {
-                // Inicia a recarga se ainda houver balas totais
-                if (balasTotaisPorArma[armaAtual] > 0)
-                {
-                    estaRecarregando = true;
-                    tempoInicioRecarga = Time.time;
-                    balasRecarregadas = 0; // Reseta o contador de balas recarregadas
-                    tempoUltimoSomRecarga = Time.time; // Permite o primeiro som imediatamente
-                    // Calcula quantas balas são necessárias pra encher o carregador
-                    balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
-                    Debug.Log($"Iniciando recarga da {nomesArmas[armaAtual]}... Balas necessárias: {balasNecessarias}");
-                }
-                else
-                {
-                    Debug.Log($"Sem balas totais pra recarregar a {nomesArmas[armaAtual]}!");
-                }
-            }
-        }
-        else
-        {
-            Debug.Log("Condições pra atirar não atendidas!");
-        }
-
-        // Log adicional pra verificar se a barra de espaço tá interferindo
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            Debug.Log("Barra de espaço pressionada! (Deve ser usada apenas pro pulo)");
+            estaRecuando = true; // Inicia o recuo visual
+            tempoRecuo = 0f; // Reseta o tempo do recuo
+            Vector3 direcao = (mousePos - transform.position).normalized; // Calcula a direção do tiro
+            deslocamentoRecuo = -direcao * (armas[armaAtual].forcaRecuo * 0.05f); // Define o deslocamento do recuo
         }
     }
 
+    // Método pra trocar a arma atual
     void TrocarArma(int novaArma)
     {
-        armaAtual = novaArma;
-        Debug.Log($"Arma trocada: {nomesArmas[armaAtual]}");
+        armaAtual = novaArma; // Define o índice da nova arma
+        Debug.Log($"Arma trocada: {armas[armaAtual].nomeArma}");
+        spriteRenderer.sprite = armas[armaAtual].spriteArma; // Atualiza o sprite da arma
 
-        // Atualiza o sprite da arma
-        spriteRenderer.sprite = armaAtual == 0 ? spritePistola : spriteEspingarda;
+        // Cancela a recarga e o atraso da arma anterior
+        armas[armaAtual].estaRecarregando = false;
+        estaAtrasandoRecarga = false;
+        armas[armaAtual].AtualizarHUD(); // Atualiza o HUD com os dados da nova arma
 
-        // Cancela qualquer recarga em andamento e reinicia variáveis de recarga
-        estaRecarregando = false;
-        tempoInicioRecarga = 0f;
-        balasRecarregadas = 0;
-        tempoUltimoSomRecarga = 0f;
-        balasNecessarias = 0;
-
-        // Atualiza a HUD
-        if (controlarHUD != null)
+        // Inicia recarga se necessário (se não houver munição no carregador)
+        if (armas[armaAtual].municaoAtual <= 0 && armas[armaAtual].balasTotais > 0)
         {
-            Sprite spriteAtual = armaAtual == 0 ? spritePistola : spriteEspingarda;
-            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
-        }
-
-        // Verifica se a nova arma precisa recarregar
-        if (municaoPorArma[armaAtual] <= 0 && balasTotaisPorArma[armaAtual] > 0)
-        {
-            estaRecarregando = true;
-            tempoInicioRecarga = Time.time;
-            balasRecarregadas = 0;
-            tempoUltimoSomRecarga = Time.time;
-            balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
-            Debug.Log($"Nova arma precisa recarregar. Iniciando recarga da {nomesArmas[armaAtual]}... Balas necessárias: {balasNecessarias}");
-        }
-    }
-
-    void Atirar()
-    {
-        // Log pra confirmar que o método Atirar foi chamado
-        Debug.Log("Método Atirar chamado!");
-
-        // Toca o som de disparo da arma atual
-        if (audioSource != null && armas[armaAtual].somDisparo != null)
-        {
-            audioSource.PlayOneShot(armas[armaAtual].somDisparo);
-            Debug.Log($"Tocando som: {armas[armaAtual].somDisparo.name}");
-        }
-        else
-        {
-            Debug.LogWarning("AudioSource ou somDisparo não configurado!");
-        }
-
-        // Pega a direção de flip do Soldado Player
-        float direcaoFlip = moverSoldado.GetDirecaoFlip();
-        // Converte a posição do cursor de tela pra mundo
-        Vector3 mousePos = Input.mousePosition;
-        mousePos = Camera.main.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, Camera.main.nearClipPlane));
-        // Calcula a direção do Braco até o cursor
-        Vector3 direcao = (mousePos - transform.parent.position).normalized;
-        // Calcula a distância real (não normalizada) entre o Braco e o cursor, só pra depuração
-        float distanciaAoCursor = Vector3.Distance(mousePos, transform.parent.position);
-
-        // Calcula o recuo visual da arma
-        float distanciaRecuo = armas[armaAtual].forcaRecuo * 0.05f;
-        deslocamentoRecuo = -direcao * distanciaRecuo; // Deslocamento na direção oposta
-        estaRecuando = true; // Inicia o recuo
-        tempoRecuo = 0f; // Reseta o tempo do recuo
-        Debug.Log($"Recuo arma: distancia={distanciaRecuo}, direcao={direcao}");
-
-        // Aplica recuo ao Braco usando o multiplicador configurado pra arma atual
-        if (controlarBraco != null)
-        {
-            float recuoBraco = (armas[armaAtual].forcaRecuo * 0.05f) * armas[armaAtual].forcaRecuoBraco;
-            controlarBraco.AplicarRecuo(direcao, recuoBraco);
-            Debug.Log($"Aplicando recuo ao Braco: distancia={recuoBraco}, multiplicador={armas[armaAtual].forcaRecuoBraco}");
-        }
-
-        // Aplica coice no Soldado Player se configurado
-        if (armas[armaAtual].coice)
-        {
-            Vector2 direcaoCoice = -direcao.normalized; // Direção oposta ao tiro
-            soldadoRb.AddForce(direcaoCoice * armas[armaAtual].forcaCoice, ForceMode2D.Impulse); // Aplica força
-            Debug.Log($"Coice aplicado: Força={armas[armaAtual].forcaCoice}, Direção={direcaoCoice}");
-            if (moverSoldado != null)
+            if (armas[armaAtual].GetTipoArma() == 1 && armas[armaAtual].municaoAtual == 0 && armas[armaAtual].tempoAtrasoRecargaZerada > 0)
             {
-                moverSoldado.AplicarCoice(); // Notifica o MoverQuadrado
+                estaAtrasandoRecarga = true;
+                tempoInicioAtraso = Time.time;
+                Debug.Log($"Iniciando recarga com carregador zerado! Atrasando recarga da {armas[armaAtual].nomeArma} por {armas[armaAtual].tempoAtrasoRecargaZerada:F2} segundos.");
             }
-        }
-
-        // Loop pra criar cada projétil (1 pra pistola, 3 pra espingarda)
-        for (int i = 0; i < armas[armaAtual].projeteisPorTiro; i++)
-        {
-            // Calcula o desvio angular (ex.: -5°, 0°, +5° pra espingarda)
-            float t = armas[armaAtual].projeteisPorTiro > 1 ? (float)i / (armas[armaAtual].projeteisPorTiro - 1) : 0f;
-            float desvio = Mathf.Lerp(-armas[armaAtual].angulo, armas[armaAtual].angulo, t);
-            // Aplica o desvio na direção e normaliza corretamente como Vector2
-            Vector3 direcaoRotacionada = Quaternion.Euler(0, 0, desvio) * direcao;
-            Vector2 direcaoDesvio = new Vector2(direcaoRotacionada.x, direcaoRotacionada.y).normalized;
-            // Calcula o ângulo do tiro
-            float anguloTiro = Mathf.Atan2(direcaoDesvio.y, direcaoDesvio.x) * Mathf.Rad2Deg;
-            // Aplica o ajuste de rotação do sprite do projétil
-            float anguloFinal = anguloTiro + armas[armaAtual].rotacaoSpriteProjetil;
-            Quaternion rotacaoDesvio = Quaternion.Euler(0, 0, anguloFinal); // Rotação ajustada do projétil
-
-            // Ajusta o offset da ponta da arma com base no flip
-            Vector3 offsetPontaArmaAjustado = armas[armaAtual].offsetPontaArma;
-            offsetPontaArmaAjustado.x *= direcaoFlip;
-            // Calcula a posição de spawn do projétil usando a rotação do Braco
-            Vector3 posicaoTiro = transform.position + transform.parent.rotation * offsetPontaArmaAjustado;
-            Debug.Log($"Posição de tiro: {posicaoTiro} | Arma: {transform.position} | Offset Ajustado: {offsetPontaArmaAjustado} | Desvio: {desvio}");
-
-            // Instancia o projétil na posição e rotação calculadas
-            GameObject projetil = Instantiate(armas[armaAtual].projetilPrefab, posicaoTiro, rotacaoDesvio);
-
-            // Configura o alcance do projétil
-            ControlarProjetil controlarProjetil = projetil.GetComponent<ControlarProjetil>();
-            if (controlarProjetil != null)
+            else
             {
-                controlarProjetil.SetAlcance(armas[armaAtual].alcance);
+                armas[armaAtual].Recarregar();
             }
-
-            // Pega o Rigidbody2D do projétil
-            Rigidbody2D rbProjetil = projetil.GetComponent<Rigidbody2D>();
-            // Aplica a velocidade fixa, usando a direção normalizada
-            Vector2 velocidadeProjetil = direcaoDesvio * armas[armaAtual].velocidadeProjetil;
-            rbProjetil.linearVelocity = velocidadeProjetil;
-            // Log pra depuração: distância, direção, velocidade aplicada e posição de spawn
-            Debug.Log($"Distância ao cursor: {distanciaAoCursor}, Direção desvio: {direcaoDesvio}, Magnitude direção: {direcaoDesvio.magnitude}, Velocidade aplicada: {velocidadeProjetil.magnitude}, Posição de spawn: {posicaoTiro}");
         }
     }
 }
