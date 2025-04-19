@@ -7,7 +7,7 @@ public class ControlarArma : MonoBehaviour
     private int armaAtual = 0; // Índice da arma atual (0: pistola, 1: espingarda)
     private float tempoUltimoTiro; // Tempo do último tiro pra controlar cadência
     private int[] municaoPorArma; // Array pra armazenar a munição de cada arma
-    private int balasTotais = 300; // Total de balas disponíveis (inicia com 300)
+    private int[] balasTotaisPorArma; // Array pra balas totais de cada arma
     private bool estaRecarregando; // Indica se a arma tá recarregando
     private float tempoInicioRecarga; // Tempo em que a recarga começou
     private int balasRecarregadas; // Quantidade de balas já recarregadas (pra recarga manual)
@@ -79,20 +79,16 @@ public class ControlarArma : MonoBehaviour
             enabled = false;
             return;
         }
-        // Inicializa o array de munição pra cada arma
+        // Inicializa os arrays de munição e balas totais pra cada arma
         municaoPorArma = new int[armas.Length];
+        balasTotaisPorArma = new int[armas.Length];
         for (int i = 0; i < armas.Length; i++)
         {
             municaoPorArma[i] = armas[i].tamanhoCarregador; // Inicia com o carregador cheio
+            balasTotaisPorArma[i] = 300; // Inicia com 300 balas por arma
         }
         // Inicia com a pistola
-        armaAtual = 0;
-        spriteRenderer.sprite = spritePistola;
-        // Atualiza a HUD inicialmente
-        if (controlarHUD != null)
-        {
-            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spritePistola);
-        }
+        TrocarArma(0);
     }
 
     void Update()
@@ -104,31 +100,14 @@ public class ControlarArma : MonoBehaviour
             return;
         }
 
-        // Troca pra pistola com tecla 1
-        if (Input.GetKeyDown(KeyCode.Alpha1) && armas.Length > 0)
+        // Troca de arma
+        if (Input.GetKeyDown(KeyCode.Alpha1) && armaAtual != 0 && armas.Length > 0)
         {
-            armaAtual = 0;
-            estaRecarregando = false; // Cancela recarga ao trocar de arma
-            spriteRenderer.sprite = spritePistola;
-            Debug.Log("Arma trocada: Pistola");
-            // Atualiza a HUD ao trocar de arma
-            if (controlarHUD != null)
-            {
-                controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spritePistola);
-            }
+            TrocarArma(0);
         }
-        // Troca pra espingarda com tecla 2
-        if (Input.GetKeyDown(KeyCode.Alpha2) && armas.Length > 1)
+        else if (Input.GetKeyDown(KeyCode.Alpha2) && armaAtual != 1 && armas.Length > 1)
         {
-            armaAtual = 1;
-            estaRecarregando = false; // Cancela recarga ao trocar de arma
-            spriteRenderer.sprite = spriteEspingarda;
-            Debug.Log("Arma trocada: Espingarda");
-            // Atualiza a HUD ao trocar de arma
-            if (controlarHUD != null)
-            {
-                controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spriteEspingarda);
-            }
+            TrocarArma(1);
         }
 
         // Pega a direção de flip do Soldado Player (1: direita, -1: esquerda)
@@ -190,19 +169,19 @@ public class ControlarArma : MonoBehaviour
                         }
                         // Recarrega todas as balas restantes de uma vez
                         municaoPorArma[armaAtual] += balasFaltando;
-                        balasTotais -= balasFaltando;
+                        balasTotaisPorArma[armaAtual] -= balasFaltando;
                         balasRecarregadas = balasNecessarias; // Marca todas as balas como recarregadas
                         // Atualiza a HUD
                         if (controlarHUD != null)
                         {
                             Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spriteAtual);
+                            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
                         }
                     }
                     // Termina a recarga
                     estaRecarregando = false;
                     balasRecarregadas = 0; // Reseta o contador
-                    Debug.Log($"Recarga manual concluída! Balas totais restantes: {balasTotais}");
+                    Debug.Log($"Recarga manual concluída! Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
                 }
                 // Toca o som de recarga pra cada bala, com intervalo, mas só se ainda não terminou
                 else if (balasRecarregadas < balasNecessarias && Time.time >= tempoUltimoSomRecarga + intervaloSom)
@@ -220,12 +199,12 @@ public class ControlarArma : MonoBehaviour
                     tempoUltimoSomRecarga = Time.time;
                     // Incrementa a munição uma bala por vez
                     municaoPorArma[armaAtual]++;
-                    balasTotais--;
-                    // Atualiza a HUD a cada bala recarregada
+                    balasTotaisPorArma[armaAtual]--;
+                    // Atualiza a HUD
                     if (controlarHUD != null)
                     {
                         Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spriteAtual);
+                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
                     }
                 }
             }
@@ -236,23 +215,23 @@ public class ControlarArma : MonoBehaviour
                 {
                     // Calcula quantas balas são necessárias pra encher o carregador
                     balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
-                    if (balasTotais >= balasNecessarias)
+                    if (balasTotaisPorArma[armaAtual] >= balasNecessarias)
                     {
                         // Termina a recarga
                         municaoPorArma[armaAtual] = armas[armaAtual].tamanhoCarregador;
-                        balasTotais -= balasNecessarias;
-                        Debug.Log($"Recarga automática concluída! Balas totais restantes: {balasTotais}");
+                        balasTotaisPorArma[armaAtual] -= balasNecessarias;
+                        Debug.Log($"Recarga automática concluída! Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
                     }
-                    else if (balasTotais > 0)
+                    else if (balasTotaisPorArma[armaAtual] > 0)
                     {
                         // Recarga parcial
-                        municaoPorArma[armaAtual] += balasTotais;
-                        balasTotais = 0;
-                        Debug.Log($"Recarga parcial! Munição atual: {municaoPorArma[armaAtual]}, Balas totais: {balasTotais}");
+                        municaoPorArma[armaAtual] += balasTotaisPorArma[armaAtual];
+                        balasTotaisPorArma[armaAtual] = 0;
+                        Debug.Log($"Recarga parcial! Munição atual: {municaoPorArma[armaAtual]}, Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
                     }
                     else
                     {
-                        Debug.Log("Sem balas totais para recarregar!");
+                        Debug.Log($"Sem balas totais pra recarregar a {nomesArmas[armaAtual]}!");
                     }
                     // Toca o som de recarga (apenas pra recarga automática)
                     if (audioSource != null && armas[armaAtual].somRecarga != null)
@@ -265,11 +244,11 @@ public class ControlarArma : MonoBehaviour
                         Debug.LogWarning("AudioSource ou somRecarga não configurado!");
                     }
                     estaRecarregando = false;
-                    // Atualiza a HUD ao terminar a recarga
+                    // Atualiza a HUD
                     if (controlarHUD != null)
                     {
                         Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spriteAtual);
+                        controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
                     }
                 }
             }
@@ -282,30 +261,29 @@ public class ControlarArma : MonoBehaviour
         bool mousePressed = mousePressedDown || mousePressedHold; // Combina as duas condições
         bool tempoOk = Time.time >= tempoUltimoTiro + armas[armaAtual].tempoEntreTiros;
         bool temMunicao = municaoPorArma[armaAtual] > 0;
-        bool temBalasTotais = balasTotais > 0;
+        bool temBalasTotais = balasTotaisPorArma[armaAtual] > 0 || municaoPorArma[armaAtual] > 0;
 
         // Log detalhado pra cada condição
-        Debug.Log($"Condições de disparo: MousePressedDown={mousePressedDown}, MousePressedHold={mousePressedHold}, MousePressed={mousePressed}, TempoOk={tempoOk} (TempoAtual={Time.time}, UltimoTiro={tempoUltimoTiro}, Cadencia={armas[armaAtual].tempoEntreTiros}), TemMunicao={temMunicao} (MunicaoAtual={municaoPorArma[armaAtual]}), TemBalasTotais={temBalasTotais} (BalasTotais={balasTotais})");
+        Debug.Log($"Condições de disparo: MousePressedDown={mousePressedDown}, MousePressedHold={mousePressedHold}, MousePressed={mousePressed}, TempoOk={tempoOk} (TempoAtual={Time.time}, UltimoTiro={tempoUltimoTiro}, Cadencia={armas[armaAtual].tempoEntreTiros}), TemMunicao={temMunicao} (MunicaoAtual={municaoPorArma[armaAtual]}), TemBalasTotais={temBalasTotais} (BalasTotais={balasTotaisPorArma[armaAtual]})");
 
         // Atira se todas as condições forem atendidas
-        if (mousePressed && tempoOk && temMunicao && temBalasTotais)
+        if (mousePressed && tempoOk && temMunicao)
         {
             Debug.Log("Condições pra atirar atendidas! Chamando Atirar...");
             Atirar();
             tempoUltimoTiro = Time.time; // Atualiza o tempo do último tiro
             municaoPorArma[armaAtual]--; // Reduz a munição do carregador da arma atual
-            balasTotais--; // Reduz o total de balas
-            Debug.Log($"Munição restante: {municaoPorArma[armaAtual]}, Balas totais: {balasTotais}");
-            // Atualiza a HUD ao atirar
+            Debug.Log($"Munição restante: {municaoPorArma[armaAtual]}, Balas totais da {nomesArmas[armaAtual]}: {balasTotaisPorArma[armaAtual]}");
+            // Atualiza a HUD
             if (controlarHUD != null)
             {
                 Sprite spriteAtual = (armaAtual == 0) ? spritePistola : spriteEspingarda;
-                controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotais, nomesArmas[armaAtual], spriteAtual);
+                controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
             }
             if (municaoPorArma[armaAtual] <= 0)
             {
                 // Inicia a recarga se ainda houver balas totais
-                if (balasTotais > 0)
+                if (balasTotaisPorArma[armaAtual] > 0)
                 {
                     estaRecarregando = true;
                     tempoInicioRecarga = Time.time;
@@ -313,11 +291,11 @@ public class ControlarArma : MonoBehaviour
                     tempoUltimoSomRecarga = Time.time; // Permite o primeiro som imediatamente
                     // Calcula quantas balas são necessárias pra encher o carregador
                     balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
-                    Debug.Log($"Iniciando recarga... Balas necessárias: {balasNecessarias}");
+                    Debug.Log($"Iniciando recarga da {nomesArmas[armaAtual]}... Balas necessárias: {balasNecessarias}");
                 }
                 else
                 {
-                    Debug.Log("Sem balas totais para recarregar!");
+                    Debug.Log($"Sem balas totais pra recarregar a {nomesArmas[armaAtual]}!");
                 }
             }
         }
@@ -330,6 +308,40 @@ public class ControlarArma : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space))
         {
             Debug.Log("Barra de espaço pressionada! (Deve ser usada apenas pro pulo)");
+        }
+    }
+
+    void TrocarArma(int novaArma)
+    {
+        armaAtual = novaArma;
+        Debug.Log($"Arma trocada: {nomesArmas[armaAtual]}");
+
+        // Atualiza o sprite da arma
+        spriteRenderer.sprite = armaAtual == 0 ? spritePistola : spriteEspingarda;
+
+        // Cancela qualquer recarga em andamento e reinicia variáveis de recarga
+        estaRecarregando = false;
+        tempoInicioRecarga = 0f;
+        balasRecarregadas = 0;
+        tempoUltimoSomRecarga = 0f;
+        balasNecessarias = 0;
+
+        // Atualiza a HUD
+        if (controlarHUD != null)
+        {
+            Sprite spriteAtual = armaAtual == 0 ? spritePistola : spriteEspingarda;
+            controlarHUD.AtualizarMunicao(municaoPorArma[armaAtual], armas[armaAtual].tamanhoCarregador, balasTotaisPorArma[armaAtual], nomesArmas[armaAtual], spriteAtual, armaAtual);
+        }
+
+        // Verifica se a nova arma precisa recarregar
+        if (municaoPorArma[armaAtual] <= 0 && balasTotaisPorArma[armaAtual] > 0)
+        {
+            estaRecarregando = true;
+            tempoInicioRecarga = Time.time;
+            balasRecarregadas = 0;
+            tempoUltimoSomRecarga = Time.time;
+            balasNecessarias = armas[armaAtual].tamanhoCarregador - municaoPorArma[armaAtual];
+            Debug.Log($"Nova arma precisa recarregar. Iniciando recarga da {nomesArmas[armaAtual]}... Balas necessárias: {balasNecessarias}");
         }
     }
 

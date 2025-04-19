@@ -1543,11 +1543,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   offsetBraco: {x: -0.3, y: -0.25, z: 0}
---- !u!1 &1262761369 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2271228718102077484, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
-  m_PrefabInstance: {fileID: 5975809091137140650}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1273250380
 GameObject:
   m_ObjectHideFlags: 0
@@ -2081,7 +2076,8 @@ MonoBehaviour:
   spriteArma: {fileID: 928716402}
   municaoTexto: {fileID: 681492681}
   balasPainel: {fileID: 589684862}
-  balaSpritePrefab: {fileID: 1262761369}
+  balaSpritePistola: {fileID: 1833130017713971448, guid: ed218bd3adcccd941ab4b950a496c12d, type: 3}
+  balaSpriteEspingarda: {fileID: 3461599421150928633, guid: 96efc9c5fa634b447854fb4ce3f7b2e7, type: 3}
   espacamentoBalas: 20
   rotacaoBala: 0
 --- !u!1001 &5975809091137140650
@@ -2094,15 +2090,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
       propertyPath: m_Color.b
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
       propertyPath: m_Color.g
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 714974378839988228, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
       propertyPath: m_Color.r
-      value: 0.9433962
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2271228718102077484, guid: cb00ffdeda41754419e7e6a8ee27d53c, type: 3}
       propertyPath: m_Name

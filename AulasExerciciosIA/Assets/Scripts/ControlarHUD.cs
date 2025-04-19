@@ -1,6 +1,6 @@
 using UnityEngine;
-using TMPro; // Necessário pra TextMeshPro
-using UnityEngine.UI; // Necessário pra Image
+using TMPro;
+using UnityEngine.UI;
 
 public class ControlarHUD : MonoBehaviour
 {
@@ -8,24 +8,26 @@ public class ControlarHUD : MonoBehaviour
     public Image spriteArma; // Referência à imagem do sprite da arma
     public TextMeshProUGUI municaoTexto; // Referência ao texto da munição
     public GameObject balasPainel; // Referência ao painel onde os sprites das balas serão instanciados
-    public GameObject balaSpritePrefab; // Prefab do sprite de bala
-    public float espacamentoBalas = 40f; // Espaçamento entre os sprites (ajustável no Inspector)
-    public float rotacaoBala = 0f; // Rotação dos sprites de bala (em graus, ajustável no Inspector)
+    public GameObject balaSpritePistola; // Prefab do sprite de bala da pistola
+    public GameObject balaSpriteEspingarda; // Prefab do sprite de bala da espingarda
+    public float espacamentoBalas = 40f; // Espaçamento entre os sprites
+    public float rotacaoBala = 0f; // Rotação dos sprites de bala
 
     private Image[] balaSprites; // Array de sprites das balas
-    private int municaoAtual; // Munição atual (pra comparar com o valor anterior)
+    private int municaoAtual; // Munição atual
     private int tamanhoCarregador; // Tamanho máximo do carregador
+    private int tipoArmaAtual; // Arma atual (0: pistola, 1: espingarda)
 
     void Start()
     {
         // Garante que o sprite da arma preserve a proporção
         if (spriteArma != null)
         {
-            spriteArma.preserveAspect = true; // Força o "Preserve Aspect" em tempo de execução
+            spriteArma.preserveAspect = true;
         }
     }
 
-    public void AtualizarMunicao(int novaMunicao, int novoTamanhoCarregador, int novasBalasTotais, string nomeArma, Sprite spriteArmaAtual)
+    public void AtualizarMunicao(int novaMunicao, int novoTamanhoCarregador, int novasBalasTotais, string nomeArma, Sprite spriteArmaAtual, int tipoArma)
     {
         // Atualiza o nome da arma
         nomeArmaTexto.text = nomeArma;
@@ -33,31 +35,25 @@ public class ControlarHUD : MonoBehaviour
         // Atualiza o sprite da arma
         spriteArma.sprite = spriteArmaAtual;
 
-        // Ajusta o tamanho do RectTransform como segurança extra pra evitar distorção
+        // Ajusta o tamanho do RectTransform pra evitar distorção
         if (spriteArma.sprite != null)
         {
-            // Pega as dimensões do sprite
             Vector2 spriteSize = spriteArma.sprite.bounds.size;
             RectTransform rect = spriteArma.GetComponent<RectTransform>();
-
-            // Calcula a proporção do sprite (largura/altura)
             float aspectRatio = spriteSize.x / spriteSize.y;
-
-            // Define um tamanho base (ex.: altura fixa de 50, ajusta a largura pra manter a proporção)
-            float alturaDesejada = 50f; // Ajustável
+            float alturaDesejada = 50f;
             float larguraCalculada = alturaDesejada * aspectRatio;
-
-            // Aplica as novas dimensões ao RectTransform
             rect.sizeDelta = new Vector2(larguraCalculada, alturaDesejada);
         }
 
-        // Atualiza o texto pra mostrar apenas o total de balas
+        // Atualiza o texto da munição
         municaoTexto.text = $"{novasBalasTotais}";
 
-        // Se o tamanho do carregador mudou (ex.: troca de arma), recria os sprites
-        if (novoTamanhoCarregador != tamanhoCarregador)
+        // Se o tamanho do carregador ou o tipo de arma mudou, recria os sprites
+        if (novoTamanhoCarregador != tamanhoCarregador || tipoArma != tipoArmaAtual)
         {
             tamanhoCarregador = novoTamanhoCarregador;
+            tipoArmaAtual = tipoArma;
             CriarSpritesBalas();
         }
 
@@ -71,7 +67,7 @@ public class ControlarHUD : MonoBehaviour
 
     void CriarSpritesBalas()
     {
-        // Remove os sprites existentes, se houver
+        // Remove os sprites existentes
         if (balaSprites != null)
         {
             foreach (Image sprite in balaSprites)
@@ -80,30 +76,40 @@ public class ControlarHUD : MonoBehaviour
             }
         }
 
-        // Cria novos sprites com base no tamanho do carregador
+        // Escolhe o prefab com base no tipo de arma
+        GameObject balaSpritePrefab = tipoArmaAtual == 0 ? balaSpritePistola : balaSpriteEspingarda;
+
+        // Verifica se o prefab tá configurado
+        if (balaSpritePrefab == null)
+        {
+            Debug.LogError($"Prefab de sprite de bala {(tipoArmaAtual == 0 ? "Pistola" : "Espingarda")} não configurado!");
+            return;
+        }
+
+        // Cria novos sprites
         balaSprites = new Image[tamanhoCarregador];
         for (int i = 0; i < tamanhoCarregador; i++)
         {
             GameObject balaObj = Instantiate(balaSpritePrefab, balasPainel.transform);
             RectTransform rect = balaObj.GetComponent<RectTransform>();
-            rect.anchoredPosition = new Vector2(i * espacamentoBalas, 0); // Posiciona os sprites em linha
-            rect.rotation = Quaternion.Euler(0, 0, rotacaoBala); // Aplica a rotação
+            rect.anchoredPosition = new Vector2(i * espacamentoBalas, 0);
+            rect.rotation = Quaternion.Euler(0, 0, rotacaoBala);
             balaSprites[i] = balaObj.GetComponent<Image>();
         }
     }
 
     void AtualizarSpritesBalas()
     {
-        // Atualiza a cor dos sprites com base na munição atual
+        // Atualiza a cor dos sprites
         for (int i = 0; i < balaSprites.Length; i++)
         {
             if (i < municaoAtual)
             {
-                balaSprites[i].color = Color.yellow; // Bala cheia (ajustável)
+                balaSprites[i].color = Color.white;
             }
             else
             {
-                balaSprites[i].color = Color.gray; // Bala vazia (ajustável)
+                balaSprites[i].color = Color.gray;
             }
         }
     }
