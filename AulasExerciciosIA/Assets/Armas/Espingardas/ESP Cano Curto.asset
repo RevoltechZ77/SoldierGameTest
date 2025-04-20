@@ -16,7 +16,7 @@ MonoBehaviour:
   tamanhoCarregador: 8
   tempoEntreTiros: 0.5
   tempoRecarga: 3
-  tempoAtrasoRecargaZerada: 0
+  tempoAtrasoRecargaZerada: 4.08
   forcaRecuo: 6
   forcaRecuoBraco: 0.55
   forcaCoice: 8

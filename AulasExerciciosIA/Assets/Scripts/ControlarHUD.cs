@@ -113,4 +113,23 @@ public class ControlarHUD : MonoBehaviour
             }
         }
     }
+
+    // Método pra limpar o HUD de munição
+    public void LimparHUDMunicao()
+    {
+        nomeArmaTexto.text = "";
+        spriteArma.sprite = null;
+        municaoTexto.text = "";
+        if (balaSprites != null)
+        {
+            foreach (Image sprite in balaSprites)
+            {
+                Destroy(sprite.gameObject);
+            }
+        }
+        balaSprites = null;
+        municaoAtual = 0;
+        tamanhoCarregador = 0;
+        tipoArmaAtual = -1;
+    }
 }

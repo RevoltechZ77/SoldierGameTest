@@ -1,24 +1,23 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-// Script que gerencia as armas do jogador, delegando a lógica pra classe específica de cada arma
+// Script que gerencia as armas do jogador, delegando a lógica para a classe específica de cada arma
 public class ControlarArma : MonoBehaviour
 {
     public ArmaConfig[] armasConfig; // Array de ScriptableObjects (Carrion 9mm, ESP Cano Curto)
     private ArmaBase[] armas; // Array de instâncias das armas (Pistola, Espingarda)
     private int armaAtual = 0; // Índice da arma atual (0: Carrion 9mm, 1: ESP Cano Curto)
-    private float tempoUltimoTiro; // Tempo do último tiro pra controlar cadência
+    private float tempoUltimoTiro; // Tempo do último tiro para controlar cadência
     private bool estaRecuando; // Controla se a arma está recuando visualmente
     private float tempoRecuo; // Tempo atual do recuo visual
     private float duracaoRecuo = 0.2f; // Duração do recuo visual (em segundos)
     private Vector3 deslocamentoRecuo; // Deslocamento do recuo visual
     private Rigidbody2D soldadoRb; // Referência ao Rigidbody2D do jogador
     private MoverQuadrado moverSoldado; // Referência ao script de movimento do jogador
-    private SpriteRenderer spriteRenderer; // Componente pra trocar e flipar sprites da arma
+    private SpriteRenderer spriteRenderer; // Componente para trocar e flipar sprites da arma
     private ControlarBraco controlarBraco; // Referência ao script do braço
     private ControlarHUD controlarHUD; // Referência ao script do HUD
-    private AudioSource audioSource; // Componente pra tocar sons
-    private bool estaAtrasandoRecarga; // Indica se a arma atual está em um estado de atraso
-    private float tempoInicioAtraso; // Momento em que o atraso começou
+    private AudioSource audioSource; // Componente para tocar sons
 
     void Start()
     {
@@ -77,16 +76,25 @@ public class ControlarArma : MonoBehaviour
         // Verifica se há armas configuradas no array armasConfig
         if (armasConfig == null || armasConfig.Length == 0)
         {
-            Debug.LogError("Nenhuma arma configurada!");
+            Debug.LogError("Nenhuma arma configurada no array armasConfig!");
             enabled = false;
             return;
         }
 
         // Cria o array de instâncias das armas
         armas = new ArmaBase[armasConfig.Length];
+        Debug.Log($"Inicializando {armasConfig.Length} armas...");
         for (int i = 0; i < armasConfig.Length; i++)
         {
-            // Cria um GameObject vazio pra cada arma (pra anexar os scripts Pistola ou Espingarda)
+            // Verifica se o elemento no array armasConfig é nulo
+            if (armasConfig[i] == null)
+            {
+                Debug.LogError($"ArmaConfig no índice {i} é nulo!");
+                enabled = false;
+                return;
+            }
+
+            // Cria um GameObject vazio para cada arma (para anexar os scripts Pistola ou Espingarda)
             GameObject armaObj = new GameObject($"Arma_{i}");
             armaObj.transform.SetParent(transform); // Faz o GameObject ser filho do objeto Arma
             ArmaBase arma;
@@ -103,11 +111,10 @@ public class ControlarArma : MonoBehaviour
                 arma.nomeArma = "ESP Cano Curto"; // Define o nome
             }
 
-            // --- Copia os dados do ScriptableObject (ArmaConfig) pra instância da arma ---
+            // --- Copia os dados do ScriptableObject (ArmaConfig) para a instância da arma ---
             arma.tamanhoCarregador = armasConfig[i].tamanhoCarregador;
             arma.tempoEntreTiros = armasConfig[i].tempoEntreTiros;
             arma.tempoRecarga = armasConfig[i].tempoRecarga;
-            arma.tempoAtrasoRecargaZerada = armasConfig[i].tempoAtrasoRecargaZerada;
             arma.forcaRecuo = armasConfig[i].forcaRecuo;
             arma.forcaRecuoBraco = armasConfig[i].forcaRecuoBraco;
             arma.forcaCoice = armasConfig[i].forcaCoice;
@@ -127,6 +134,7 @@ public class ControlarArma : MonoBehaviour
             // Inicializa a arma com as referências externas
             arma.Inicializar(controlarHUD, audioSource, controlarBraco, soldadoRb, moverSoldado);
             armas[i] = arma; // Adiciona a arma ao array
+            Debug.Log($"Arma {i} ({arma.nomeArma}) inicializada com sucesso.");
         }
 
         TrocarArma(0); // Começa com a Carrion 9mm
@@ -154,7 +162,7 @@ public class ControlarArma : MonoBehaviour
         // --- Atualiza o sprite e a posição da arma ---
         float direcaoFlip = moverSoldado.GetDirecaoFlip(); // Pega a direção do jogador (1: direita, -1: esquerda)
         spriteRenderer.sprite = armas[armaAtual].spriteArma; // Define o sprite da arma atual
-        spriteRenderer.flipX = (direcaoFlip < 0); // Flipa o sprite se o jogador tá olhando pra esquerda
+        spriteRenderer.flipX = (direcaoFlip < 0); // Flipa o sprite se o jogador tá olhando para a esquerda
 
         Vector3 offsetArmaAjustado = armas[armaAtual].offsetArma; // Pega o offset da arma atual
         offsetArmaAjustado.x *= direcaoFlip; // Ajusta o offset com base na direção
@@ -178,29 +186,9 @@ public class ControlarArma : MonoBehaviour
         }
 
         // --- Verifica recarga manual com a tecla "R" ---
-        // Se pressionar "R", a recarga começa imediatamente, ignorando qualquer atraso
         if (Input.GetKeyDown(KeyCode.R) && armas[armaAtual].municaoAtual < armas[armaAtual].tamanhoCarregador && armas[armaAtual].balasTotais > 0)
         {
-            estaAtrasandoRecarga = false; // Cancela qualquer atraso em andamento
             armas[armaAtual].Recarregar(); // Inicia a recarga manual
-        }
-
-        // --- Gerencia o atraso da recarga automática ---
-        if (estaAtrasandoRecarga)
-        {
-            float tempoDecorridoAtraso = Time.time - tempoInicioAtraso;
-            float tempoAtraso = armas[armaAtual].GetTipoArma() == 1 ? armas[armaAtual].tempoAtrasoRecargaZerada : 0f; // Atraso só pra espingarda
-            if (tempoDecorridoAtraso >= tempoAtraso)
-            {
-                estaAtrasandoRecarga = false; // Termina o atraso
-                Debug.Log($"Atraso de recarga terminado! Iniciando recarga da {armas[armaAtual].nomeArma}.");
-                armas[armaAtual].Recarregar(); // Inicia a recarga
-            }
-            else
-            {
-                Debug.Log($"Aguardando atraso de recarga da {armas[armaAtual].nomeArma}... Tempo restante: {(tempoAtraso - tempoDecorridoAtraso):F2} segundos.");
-                return; // Não prossegue até o atraso terminar
-            }
         }
 
         // --- Executa a recarga da arma atual ---
@@ -210,26 +198,16 @@ public class ControlarArma : MonoBehaviour
         }
 
         // --- Verifica se a arma precisa recarregar automaticamente ---
-        if (armas[armaAtual].municaoAtual <= 0 && armas[armaAtual].balasTotais > 0 && !armas[armaAtual].estaRecarregando && !estaAtrasandoRecarga)
+        if (armas[armaAtual].municaoAtual <= 0 && armas[armaAtual].balasTotais > 0 && !armas[armaAtual].estaRecarregando)
         {
-            // Se a arma é uma espingarda e o carregador está zerado, inicia o atraso
-            if (armas[armaAtual].GetTipoArma() == 1 && armas[armaAtual].municaoAtual == 0 && armas[armaAtual].tempoAtrasoRecargaZerada > 0)
-            {
-                estaAtrasandoRecarga = true;
-                tempoInicioAtraso = Time.time;
-                Debug.Log($"Iniciando recarga com carregador zerado! Atrasando recarga da {armas[armaAtual].nomeArma} por {armas[armaAtual].tempoAtrasoRecargaZerada:F2} segundos.");
-            }
-            else
-            {
-                armas[armaAtual].Recarregar(); // Inicia a recarga automática sem atraso
-            }
+            armas[armaAtual].Recarregar(); // Inicia a recarga automática
         }
 
         // --- Verifica se pode atirar ---
         bool mousePressed = Input.GetMouseButtonDown(0) || Input.GetMouseButton(0); // Clique ou clique segurado
-        if (mousePressed && armas[armaAtual].PodeAtirar(Time.time, tempoUltimoTiro))
+        if (mousePressed && armas[armaAtual].PodeAtirar(Time.time, tempoUltimoTiro) && !EventSystem.current.IsPointerOverGameObject())
         {
-            // Converte a posição do cursor pra coordenadas do mundo
+            // Converte a posição do cursor para coordenadas do mundo
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
             // Chama o método de disparo da arma atual
             armas[armaAtual].Atirar(transform.position, transform.parent.rotation, direcaoFlip, mousePos);
@@ -242,31 +220,33 @@ public class ControlarArma : MonoBehaviour
         }
     }
 
-    // Método pra trocar a arma atual
-    void TrocarArma(int novaArma)
+    // Método para trocar a arma atual
+    public void TrocarArma(int novaArma)
     {
         armaAtual = novaArma; // Define o índice da nova arma
         Debug.Log($"Arma trocada: {armas[armaAtual].nomeArma}");
         spriteRenderer.sprite = armas[armaAtual].spriteArma; // Atualiza o sprite da arma
 
-        // Cancela a recarga e o atraso da arma anterior
+        // Cancela a recarga da arma anterior
         armas[armaAtual].estaRecarregando = false;
-        estaAtrasandoRecarga = false;
         armas[armaAtual].AtualizarHUD(); // Atualiza o HUD com os dados da nova arma
 
         // Inicia recarga se necessário (se não houver munição no carregador)
         if (armas[armaAtual].municaoAtual <= 0 && armas[armaAtual].balasTotais > 0)
         {
-            if (armas[armaAtual].GetTipoArma() == 1 && armas[armaAtual].municaoAtual == 0 && armas[armaAtual].tempoAtrasoRecargaZerada > 0)
-            {
-                estaAtrasandoRecarga = true;
-                tempoInicioAtraso = Time.time;
-                Debug.Log($"Iniciando recarga com carregador zerado! Atrasando recarga da {armas[armaAtual].nomeArma} por {armas[armaAtual].tempoAtrasoRecargaZerada:F2} segundos.");
-            }
-            else
-            {
-                armas[armaAtual].Recarregar();
-            }
+            armas[armaAtual].Recarregar();
         }
+    }
+
+    // Método público para acessar uma arma específica pelo índice
+    public ArmaBase GetArma(int indice)
+    {
+        if (indice < 0 || indice >= armas.Length)
+        {
+            Debug.LogError($"Índice de arma inválido: {indice}");
+            return null;
+        }
+        Debug.Log($"Acessando arma no índice {indice}: {armas[indice].nomeArma}");
+        return armas[indice];
     }
 }
